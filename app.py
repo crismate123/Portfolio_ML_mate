@@ -8,17 +8,23 @@ import json
 if not firebase_admin._apps:
     # Verificamos si estamos en la nube (Streamlit Cloud) buscando los "secrets"
     if "firebase_credentials" in st.secrets:
-        # Modo Nube: Leemos las credenciales desde los secretos de Streamlit
+        # MODO NUBE
         key_dict = json.loads(st.secrets["firebase_credentials"])
+        
+        # --- SOLUCIÓN AL ERROR DE CREDENCIALES ---
+        # Aseguramos que los saltos de línea de la llave privada se lean correctamente
+        if 'private_key' in key_dict:
+            key_dict['private_key'] = key_dict['private_key'].replace('\\n', '\n')
+        
         cred = credentials.Certificate(key_dict)
     else:
-        # Modo Local: Usamos tu archivo JSON (Asegúrate de poner el nombre correcto aquí para probar en tu compu)
-        cred = credentials.Certificate(r'C:\Users\cm180\Downloads\Proyecto_S_DS\TU_ARCHIVO_JSON_AQUI.json')
+        # MODO LOCAL
+        # Reemplaza con la ruta de tu compu para seguir probando localmente
+        cred = credentials.Certificate(r'C:\Users\cm180\Downloads\Proyecto_S_DS\TU_ARCHIVO_JSON_CORRECTO.json')
     
     firebase_admin.initialize_app(cred)
 
 db = firestore.client()
-
 # 2. Función para leer los datos desde el arranque
 # Usamos @st.cache_data para que la función se ejecute solo una vez y no cada vez que interactuamos con la app
 @st.cache_data
