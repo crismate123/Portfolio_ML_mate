@@ -1,0 +1,491 @@
+---
+title: "Modelo Probabilístico de Hora de Llegada"
+author: "Tu Nombre"
+date: "`r Sys.Date()`"
+output: 
+  pdf_document:
+    latex_engine: xelatex
+fontsize: 12pt
+geometry: margin=1in
+header-includes:
+  - \usepackage{booktabs}
+  - \usepackage{setspace}
+  - \usepackage{titling}
+  - \usepackage{graphicx}
+---
+
+\begin{titlepage}
+    \centering
+    \vspace*{2cm}
+    
+    {\Huge \bfseries Modelo Probabilístico de Hora de Llegada\par}
+    
+    \vspace{0.7cm}
+    
+    {\Large \itshape Aplicación de la Distribución Beta Escalada\par}
+    
+    \vspace{1.5cm}
+    
+    \includegraphics[width=0.35\textwidth]{logo.png}
+    
+    \vspace{1.5cm}
+    
+    {\large Autor: Tu Nombre\par}
+    
+    \vspace{0.5cm}
+    
+    {\large Institución: Universidad / Empresa\par}
+    
+    \vspace{0.5cm}
+    
+    {\large \today\par}
+    
+    \vfill
+    
+    Documento generado en R Markdown
+    
+\end{titlepage}
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r gráfico,echo=FALSE,warning=FALSE}
+library(ggplot2)
+library(knitr)
+min_llegada <- 50   # 6:50
+max_llegada <- 85   # 7:25
+rango <- max_llegada - min_llegada
+
+alpha <- 5
+beta  <- 4.5
+
+formato_hora <- function(min) {
+  sprintf("%d:%02d", floor(min / 60) + 6, floor(min %% 60))
+}
+
+```
+
+
+```{r sumlacionwa, echo=FALSE,warning=FALSE}
+set.seed(123)
+n <- 730
+minutos <- min_llegada + rbeta(n, alpha, beta) * rango
+df <- data.frame(minutos = minutos)
+
+media <- mean(minutos)
+moda  <- with(density(minutos), x[which.max(y)])
+```
+
+# Introducción
+Llevo alrededor de dos años entrenando Cross fit en el horario de las 7:00 - 8:00 am, sin embargo,y digamos que la clase no empieza en ese horario exactamente, sin embargo, yo siempre soy muy puntual, llegando,siempre, entre 7:00-7:05, por ello he notado un patrón y tendencia muy clara en la hora de llegada de mi coach, resulta, que según, mi intuición, su hora de llegada promedio es 7:10, con una variación de 5 minutos antes o después de la hora promedio, lo que me ha permitido imaginar una distribución teórica del fenómeno en cuestión.
+
+La hora de llegada del coach al club en el horario de las siete de la mañana parece ser impredecible, sin embargo, realmente podemos simular probabilisticamente con una muy modesta, pero elegante función de distribución Beta, función que no será precisada en este documento, por su carácter meramente comunicativa y accesible para cualquier interesado en saber a que hora debe de salir de su casa al club y no llegar tarde o esperar diez minutos afuera.
+
+# Justificación teórica
+Tengo más de 3 años asistiendo al club donde entreno, entonces conozco con detalle las horas de llegada del Coach, por tanto puedo concluir que de manera general, su hora promedio de llegada es 7:10, con una ligera variabilidad, esto es, los días en que es muy puntual o impuntual, los cuales son eventos casi atípicos, por lo tanto, la hora de promedio de llegada es 7:10, de manera que la hora suele variar entre cinco minutos más o menos a la hora promedio, ese es el fundamento para considerar modelar la probabilidad de tiempo de llegada con una distribución de probabilidad Beta, pues con la evidencia empiríca, la función de distribución está sesgada a la derecha, pues la mayoría de eventos están cargados hacia la izquierda, por consiguiente la función es asimétrica.
+
+# Función Beta
+\[
+\mathrm{B}(\alpha,\beta)
+= \int_{0}^{1} t^{\alpha-1}(1-t)^{\beta-1}\,dt,
+\qquad \alpha,\beta > 0
+\]
+
+\begin{itemize}
+  \item \textbf{Simetría:} $\mathrm{B}(\alpha,\beta)=\mathrm{B}(\beta,\alpha)$
+  \item \textbf{Relación con Gamma:} $\mathrm{B}(\alpha,\beta)=\dfrac{\Gamma(\alpha)\Gamma(\beta)}{\Gamma(\alpha+\beta)}$
+  \item \textbf{Convergencia:} $\mathrm{B}(\alpha,\beta) < \infty$ si $\alpha,\beta>0$
+  
+  % --- PROPIEDADES ESTADÍSTICAS (Nuevas) ---
+  \item \textbf{Media (Esperanza):} $\mathrm{E}[X] = \dfrac{\alpha}{\alpha+\beta}$
+  \item \textbf{Varianza:} $\mathrm{Var}(X) = \dfrac{\alpha\beta}{(\alpha+\beta)^2 (\alpha+\beta+1)}$
+  \item \textbf{Moda:} $\dfrac{\alpha-1}{\alpha+\beta-2}$ \quad (para $\alpha,\beta > 1$)
+\end{itemize}
+
+A continuación se presenta un histograma con densidad ajustada de la distribución Beta simulados para 730 ocurrencias,además es decir, más de dos años sin considerar los fines de semana. La simulación se da en el horario de 6:55 a 7:25 a.m, pues una llegada fuera de ese horario es un evento atípico o inasistencia.
+
+```{r Histograma,echo=FALSE,warning=FALSE}
+ggplot(df, aes(minutos)) +
+  geom_histogram(aes(y = ..density..), binwidth = 1,
+                 fill = "#4E79A7", color = "white", alpha = .7) +
+  geom_density(color = "#113655", linewidth = 1.2) +
+  geom_vline(xintercept = media, color = "red", linetype = "dashed") +
+  annotate("text", x = moda - 1.5, y = .02,
+           label = paste("Media\n", formato_hora(moda)),
+           angle = 90) +
+  scale_x_continuous(breaks = seq(min_llegada, max_llegada, 5),
+                     labels = formato_hora) +
+  labs(title = "Simulación ocurrencia (6:50 – 7:25)",
+       subtitle = "Línea roja = Media",
+       caption = "Gráfico 1.1",
+       x = "Hora de llegada", y = "Densidad") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    plot.caption = element_text(hjust = 0.5)
+  )
+```
+Gráfico 1.1 como se menciono anteriormente, la hora promedio es de 7:09, así mismo podemos observar que la función está ligeramente cargada a la derecha de la media, es decir, parece suceder un mayor número de ocurrencias de llegada justo después de las 7:09 horas,aunque la diferencia es despreciable, esto es, que la llegada sea más probable en las 7:10,7;11 que minutos antes de las 7:09 horas.
+
+```{r Probabilidades,echo=FALSE,warning=FALSE}
+cortes <- seq(55, 85, by = 5)
+
+# Función de probabilidad (ya la tenías)
+prob_intervalo <- function(a, b) {
+  pbeta((b - min_llegada) / rango, alpha, beta) -
+    pbeta((a - min_llegada) / rango, alpha, beta)
+}
+
+# Calcular probabilidades
+probs <- sapply(seq_along(cortes[-length(cortes)]), function(i) {
+  prob_intervalo(cortes[i], cortes[i + 1])
+})
+
+# Data frame final
+tabla_probs <- data.frame(
+  Intervalo = paste0(
+    formato_hora(cortes[-length(cortes)]),
+    "–",
+    formato_hora(cortes[-1])
+  ),
+  Probabilidad = round(probs * 100, 2)
+)
+
+kable(
+  tabla_probs,
+  col.names = c("Intérvalo", "Probabilidad (%)"),
+  align = c("l", "c"),
+  caption = "Probabilidad de llegada por intérvalo"
+)
+```
+
+En la presente tabla se muestra el porcentaje de frecuencia por llegada en intervalos de cinco minutos. Los resultados realmente son muy precisos, pues efectivamente, más del 80\% de la probabilidad se concentra en el intervalo de las 7:00 a 7:15 horas, siendo que la llegada antes o después de ese horario realmente es muy baja y la mayor probabilidad se concentra en el intervalo de las 7:05-7:10, donde se encuentra la media.
+
+```{r,echo=FALSE,warning=FALSE}
+ggplot(df, aes(x = minutos)) +
+  geom_histogram(
+    breaks = seq(55, 85, by = 5),
+    aes(y = ..density..),
+    fill = "navy",
+    color = "white",
+    alpha = 0.75
+  ) +
+  geom_density(color = "#113655", linewidth = 1.2) +
+  scale_x_continuous(
+    breaks = seq(55, 85, by = 5),
+    labels = formato_hora,
+    limits = c(55, 85)
+  ) +
+  labs(
+    title = "Histograma de llegadas (intervalos de 5 minutos)",
+    subtitle = "Bins de 5 minutos + densidad Beta ajustada",
+    caption = "Gráfico 1.2",
+    x = "Hora de llegada",
+    y = "Densidad"
+  ) +
+  theme_minimal() +
+   theme(
+    plot.title = element_text(hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5),
+    plot.caption = element_text(hjust = 0.5)
+  )
+```
+Gráfico 1.2 Con notable deiferencia los tres intervalos centrales son los de mayor frecuencia.
+
+```{r,echo=FALSE,warning=FALSE}
+# Definimos la función de hora por si acaso no está en memoria
+formato_hora <- function(min) {
+  sprintf("%d:%02d", floor(min / 60) + 6, floor(min %% 60))
+}
+
+# --- ESTA ES LA LÍNEA QUE FALTABA ---
+vals_q <- quantile(df$minutos, probs = c(0.25, 0.50, 0.75))
+
+# 2. GENERAR EL GRÁFICO
+ggplot(df, aes(x = "Llegadas", y = minutos)) +
+  stat_boxplot(
+    geom = "errorbar", 
+    width = 0.2,       
+    color = "#113655", 
+    linewidth = 0.6    
+  ) +
+  # Capa de puntos (Jitter)
+  geom_jitter(
+    color = "#113655",   
+    alpha = 0.4,         
+    width = 0.15,        
+    size = 1.5           
+  ) +
+  # Boxplot
+  geom_boxplot(
+    fill = "green",
+    color = "#113655",
+    alpha = 0.6,         
+    width = 0.38,
+    outlier.shape = NA   
+  ) +
+  
+  # --- ANOTACIONES (Corregidas sin 'round') ---
+  annotate("text", x = 1.42, y = vals_q[3] + 2.5,
+           label = paste("Q3:", formato_hora(vals_q[3])), 
+           color = "#2E2E2E", hjust = 0, size = 3.6) +
+  
+  annotate("text", x = 1.42, y = vals_q[1] - 2.5,
+           label = paste("Q1:", formato_hora(vals_q[1])), 
+           color = "#2E2E2E", hjust = 0, size = 3.6) +
+  
+  # Flechas indicadoras
+  annotate("segment", x = 1.30, xend = 1.38, y = vals_q[1], yend = vals_q[1],
+           color = "grey30", linewidth = 0.7, arrow = arrow(length = unit(0.12, "cm"))) +
+  annotate("segment", x = 1.30, xend = 1.38, y = vals_q[3], yend = vals_q[3],
+           color = "grey30", linewidth = 0.7, arrow = arrow(length = unit(0.12, "cm"))) +
+  
+  # Escala y Estilo
+  scale_y_continuous(
+    breaks = seq(50, 85, by = 5),
+    labels = formato_hora,
+    limits = c(45, 90)
+  ) +
+  
+  labs(
+    title = "Distribución de tiempos de llegada en cuartiles",
+    subtitle = "Boxplot con puntos de ocurrencia de eventos",
+    caption = "Gráfico 1.3",
+    y = "Hora de llegada",
+    x = NULL
+  ) +
+  
+  coord_flip() +
+  
+  theme_minimal(base_size = 13) +
+  theme(
+    plot.title    = element_text(face = "bold", hjust = 0.5, size = 15),
+    plot.subtitle = element_text(hjust = 0.5, color = "black", size = 11),
+    plot.caption = element_text(hjust = 0.5, color = "black", size = 11),
+    axis.text.y   = element_blank(),
+    axis.ticks.y  = element_blank(),
+    axis.title.y  = element_text(size = 12),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_line(color = "grey92", linewidth = 0.4)
+  )
+```
+
+El Gráfico 1.3 muestra que el 50\% central de las ocurrencias del evento, esto es, del 25\% al 75\% de los datos se concentra en las 7:04 y 7:11 horas, es decir, en ese intervalo de tiempo se concentra la mitad más típica o probable de ocurrencia.De igual manera, se observa que fuera del rango intercuatilico (la caja o cuadrado del gráfico) las observaciones disminuyen paulatinamente.
+
+```{r Estadísticos,echo=FALSE,warning=FALSE, message=FALSE}
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+min_llegada <- 50      # 6:50
+max_llegada <- 85      # 7:25
+rango <- max_llegada - min_llegada
+alpha <- 5
+beta <- 4.5
+
+# Función necesaria para ver los cuartiles como horas
+formato_hora <- function(min) {
+  sprintf("%d:%02d", floor(min / 60) + 6, floor(min %% 60))
+}
+
+set.seed(123)
+n <- 730
+minutos <- min_llegada + rbeta(n, alpha, beta) * rango
+df <- data.frame(minutos = minutos)
+
+# Dispersión
+sd_minutos <- sd(df$minutos)
+var_minutos <- var(df$minutos)
+iqr_minutos <- IQR(df$minutos)
+
+# Posición (Cuartiles)
+vals_q <- quantile(df$minutos, probs = c(0.25, 0.50, 0.75))
+
+# Forma
+mu_temp <- mean(df$minutos)
+m3 <- mean((df$minutos - mu_temp)^3)
+asimetria <- m3 / (sd_minutos^3)
+
+tabla_datos <- data.frame(
+  # Definimos el orden de las categorías
+  Categoria = c("Dispersión", "Dispersión", "Dispersión", 
+                "Posición", "Posición", "Posición",
+                "Forma"),
+  
+  Metrica = c("Desviación Estándar", "Varianza", "Rango Intercuartil (IQR)",
+              "Q1 (25%)", "Mediana (50%)", "Q3 (75%)",
+              "Asimetría (Skewness)"),
+  
+  Valor_Numerico = c(sd_minutos, var_minutos, iqr_minutos, 
+                     vals_q[1], vals_q[2], vals_q[3],
+                     asimetria)
+) %>%
+  mutate(
+    # Formateo condicional
+    Resultado = case_when(
+      Categoria == "Posición" ~ formato_hora(Valor_Numerico), # Horas para cuartiles
+      Categoria == "Dispersión" ~ paste(sprintf("%.2f", Valor_Numerico), "min"),
+      TRUE ~ sprintf("%.4f", Valor_Numerico)
+    ),
+    # Interpretaciones
+    Interpretacion = case_when(
+      Metrica == "Desviación Estándar" ~ "Variabilidad promedio",
+      Metrica == "Varianza" ~ "Dispersión al cuadrado",
+      Metrica == "Rango Intercuartil (IQR)" ~ "Rango del 50% central",
+      Metrica == "Q1 (25%)" ~ "25% llega antes de esta hora",
+      Metrica == "Mediana (50%)" ~ "Punto medio exacto",
+      Metrica == "Q3 (75%)" ~ "75% llega antes de esta hora",
+      Metrica == "Asimetría (Skewness)" ~ ifelse(abs(asimetria)<0.1, "Simétrica", "Sesgada"),
+      TRUE ~ "-"
+    )
+  )
+
+# Seleccionamos columnas finales
+tabla_visual <- tabla_datos %>%
+  dplyr::select(Metrica, Resultado, Interpretacion)
+
+kbl(tabla_visual, 
+    booktabs = TRUE, 
+    caption = "Estadísticos de Dispersión, Posición y Forma",
+    col.names = c("Estadístico", "Valor", "Interpretación"),
+    align = c("l", "c", "l")) %>%
+  
+  kable_styling(latex_options = c("hold_position", "striped"), position = "center") %>%
+  
+  # GRUPOS (Indices actualizados manualmente)
+  # Filas 1-3: Dispersión
+  pack_rows("Dispersión", 1, 3, bold = TRUE, hline_after = FALSE) %>%
+  # Filas 4-6: Posición (Cuartiles)
+  pack_rows("Posición (Cuartiles)", 4, 6, bold = TRUE, hline_after = FALSE) %>%
+  # Fila 7: Forma
+  pack_rows("Forma", 7, 7, bold = TRUE, hline_after = FALSE)
+```
+De la tabla 2 destaca la desviación estándar, pues hace perfecto sentido con la evidencia empírica y los resultados de la distribución de llegadas mostrados anteriormente. Así mismo, la distribución es simétrica con una desviación estándar de 5.43 minutos, esto es, la probabilidad de que el coach llegue en un intérvalo de cinco minutos antes o después de la media es la misma.
+
+
+
+```{r Quintiles,echo=FALSE,warning=FALSE, message=FALSE}
+library(dplyr)
+library(knitr)
+library(kableExtra)
+
+# ==========================================
+# 1. SIMULACIÓN
+# ==========================================
+min_llegada <- 50      # 6:50 (Inicio)
+max_llegada <- 85      # 7:25 (Fin)
+rango <- max_llegada - min_llegada
+alpha <- 5
+beta <- 4.5
+
+formato_hora <- function(min) {
+  sprintf("%d:%02d", floor(min / 60) + 6, floor(min %% 60))
+}
+
+set.seed(123)
+n <- 730
+minutos <- min_llegada + rbeta(n, alpha, beta) * rango
+df <- data.frame(minutos = minutos)
+
+# ==========================================
+# 2. CÁLCULO DE INTERVALOS DE QUINTILES
+# ==========================================
+# Obtenemos los cortes: 0% (Min), 20%, 40%, 60%, 80%, 100% (Max)
+cortes <- quantile(df$minutos, probs = seq(0, 1, 0.2))
+
+# ==========================================
+# 3. CREACIÓN DE LA TABLA DE RANGOS
+# ==========================================
+tabla_intervalos <- data.frame(
+  Quintil = c("1er Quintil (20% más temprano)", 
+              "2do Quintil", 
+              "3er Quintil (Medio)", 
+              "4to Quintil", 
+              "5to Quintil (20% más tardío)"),
+  
+  Rango_Hora = c(
+    paste(formato_hora(cortes[1]), "-", formato_hora(cortes[2])),
+    paste(formato_hora(cortes[2]), "-", formato_hora(cortes[3])),
+    paste(formato_hora(cortes[3]), "-", formato_hora(cortes[4])),
+    paste(formato_hora(cortes[4]), "-", formato_hora(cortes[5])),
+    paste(formato_hora(cortes[5]), "-", formato_hora(cortes[6]))
+  ),
+  
+  Descripcion = c(
+    "Llegadas tempranas (Atípicas)",
+    "Llegadas tempranas",
+    "Llegadas promedio",
+    "Llegadas tardías",
+    "Llegadas tardías (Atípicas)"
+  )
+)
+
+# ==========================================
+# 4. VISUALIZACIÓN (Estilo Booktabs)
+# ==========================================
+kbl(tabla_intervalos, 
+    booktabs = TRUE, 
+    caption = "Rangos de Hora por Quintil",
+    col.names = c("Grupo", "Intervalo de Hora", "Clasificación"),
+    align = c("l", "c", "l")) %>%
+  
+  kable_styling(latex_options = c("hold_position", "striped"), position = "center") %>%
+  
+  row_spec(0, bold = TRUE) # Negrita solo en el encabezado
+```
+El análisis de quintiles expuesto en la tabla 3 abona hallazgos muy relevantes dentro del análisis en cuestión, pues los tres quintiles centrales concentran la principal frecuencia de ocurrencias, a su vez se encuentran identicamente dispersos, mientras que los quintiles uno y cinco, concentran los eventos raros o atípicos, así como una dispersión mucho más amplía en comparación con los quintiles anteriomente mencionados.
+
+
+# Conclusiones
+Aunque mi intuición fallo ligeramente sobre el sesgo hacia la derecha, los resultados en cuanto a la distribución de los intervalos de cinco minutos realmente son muy precisos en cuanto a la frecuencia simulada de llega del coach, en cuanto a frecuencia, media y variación, por lo tanto podemos concluir que fue una muy buena simulación con excelentes resultados. 
+
+Función de distribución definitva
+\[
+f_Y(y;\alpha,\beta,a,b)
+=
+\frac{1}{(b-a)B(\alpha,\beta)}
+\left(\frac{y-a}{b-a}\right)^{\alpha-1}
+\left(1-\frac{y-a}{b-a}\right)^{\beta-1},
+\quad a \le y \le b
+\]
+
+Sea $X \sim \mathrm{Beta}(5,4.5)$ definida en $[0,1]$. 
+La variable de interés $Y$, que representa la hora de llegada en minutos 
+desde las 6:00 AM, se define como:
+
+\[
+Y = 50 + 35X
+\]
+
+Por lo tanto, $Y$ sigue una distribución Beta escalada en el intervalo $[50,85]$.
+
+
+Insights: 
+
+1. La hora promedio de llegada es 7:09.
+
+2. La hora hora promedio oscila en cinco minutos, más o menos.
+
+3. llegar al club a las 7:10 horas es estar a tiempo
+
+4. Frank llega diez minutos después de la hora, pero es muy puntual en ser impuntual
+
+5. Resumen final:
+* **3 llegadas:** Ocurren entre las **7:05 - 7:10** (El intervalo más frecuente).
+* **2 llegadas:** Ocurren entre las **7:00 - 7:05**.
+* **2 llegadas:** Ocurren entre las **7:10 - 7:15**.
+* **1 llegada:** Ocurre entre las **7:15 - 7:20**.
+* **2 llegadas restantes:** Existe una mayor probabilidad de que ocurran temprano (**6:55 - 7:00**) a que ocurran muy tarde (7:20 - 7:25).
+
+# Próximos pasos
+Ya obtuvimos una distribución teórica que explica con precisión la asistencia del coach, pero, ¿por qué no darles lo que quieren?, si ya 'sabemos'
+que distribución sigue dicha situación, entonces, por qué no generar una serie de tiempo partiendo del supuesto de la distribución Beta. ¡Lo averiguaremos! No se pierdan la siguiente publicación porque simularemos una serie del tiempo partiendo de los supuestos expuestos en este análisis. Saludos.
+
+
+
+
